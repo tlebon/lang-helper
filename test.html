@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Language Learning Assistant - Test Page</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .test-section {
+            margin: 30px 0;
+        }
+        label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: #555;
+        }
+        textarea, input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+            box-sizing: border-box;
+            resize: vertical;
+        }
+        textarea {
+            min-height: 150px;
+        }
+        .contenteditable {
+            width: 100%;
+            min-height: 150px;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        .instructions {
+            background: #e8f4f8;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 30px;
+            border-left: 4px solid #4285f4;
+        }
+        .instructions h3 {
+            margin-top: 0;
+            color: #1967d2;
+        }
+        .sample-text {
+            background: #f9f9f9;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            margin-top: 8px;
+        }
+        .hint {
+            color: #666;
+            font-size: 13px;
+            margin-top: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Language Learning Assistant Test Page</h1>
+
+        <div class="instructions">
+            <h3>How to Test</h3>
+            <ol>
+                <li>Make sure your extension is loaded in Chrome</li>
+                <li>Click the extension icon and enter your Anthropic API key</li>
+                <li>Select your target language (e.g., Spanish)</li>
+                <li>Enable the assistant toggle and click "Save Settings"</li>
+                <li>Type or paste text with errors in one of the fields below</li>
+                <li>Wait 1.5 seconds after stopping typing</li>
+                <li>Look for colored underlines on problematic text</li>
+                <li>Hover over underlined text to see suggestions</li>
+            </ol>
+        </div>
+
+        <div class="test-section">
+            <label>Test Textarea (Spanish example):</label>
+            <textarea placeholder="Type something in your target language..."></textarea>
+            <div class="sample-text">
+                Sample text with errors (Spanish): "Yo es muy feliz hoy. Me gusta mucho la idioma español."
+            </div>
+            <div class="hint">Expected issues: "Yo es" (should be "Yo soy"), "la idioma" (should be "el idioma")</div>
+        </div>
+
+        <div class="test-section">
+            <label>Test Input Field:</label>
+            <input type="text" placeholder="Short text here...">
+            <div class="sample-text">
+                Sample: "Tengo viente años" (error: should be "veinte")
+            </div>
+        </div>
+
+        <div class="test-section">
+            <label>Test Content Editable:</label>
+            <div class="contenteditable" contenteditable="true">Type here...</div>
+        </div>
+
+        <div class="test-section">
+            <h3>Troubleshooting Checklist</h3>
+            <ul>
+                <li>✓ Extension shows in chrome://extensions/ with no errors?</li>
+                <li>✓ API key is entered and saved?</li>
+                <li>✓ "Enable Assistant" toggle is ON?</li>
+                <li>✓ You're typing at least 10 characters?</li>
+                <li>✓ You waited 1.5 seconds after stopping typing?</li>
+                <li>✓ Console shows no errors? (Right-click → Inspect → Console tab)</li>
+            </ul>
+        </div>
+
+        <div class="instructions">
+            <h3>🔍 Check Browser Console</h3>
+            <p>Right-click anywhere on this page → Inspect → Console tab</p>
+            <p>Look for messages starting with "Language Helper:" or any red error messages</p>
+        </div>
+    </div>
+</body>
+</html>

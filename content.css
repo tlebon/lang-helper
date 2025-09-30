@@ -1,0 +1,213 @@
+/* Styles for language learning assistant highlights and tooltips */
+
+.lang-helper-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.lang-helper-highlights {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  color: transparent;
+  z-index: 1;
+}
+
+.lang-helper-highlight {
+  position: relative;
+  background-color: transparent;
+  border-bottom: 3px solid;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: background-color 0.2s;
+}
+
+.lang-helper-highlight[data-severity="error"] {
+  border-bottom-color: #dc3545;
+  text-decoration: underline;
+  text-decoration-color: #dc3545;
+  text-decoration-thickness: 3px;
+  text-decoration-style: wavy;
+}
+
+.lang-helper-highlight[data-severity="warning"] {
+  border-bottom-color: #ffc107;
+  text-decoration: underline;
+  text-decoration-color: #ffc107;
+  text-decoration-thickness: 3px;
+  text-decoration-style: wavy;
+}
+
+.lang-helper-highlight[data-severity="info"] {
+  border-bottom-color: #17a2b8;
+  text-decoration: underline;
+  text-decoration-color: #17a2b8;
+  text-decoration-thickness: 2px;
+  text-decoration-style: solid;
+}
+
+.lang-helper-highlight[data-severity="style"] {
+  border-bottom-color: #6c757d;
+  text-decoration: underline;
+  text-decoration-color: #6c757d;
+  text-decoration-thickness: 2px;
+  text-decoration-style: dotted;
+}
+
+.lang-helper-highlight:hover {
+  background-color: rgba(255, 235, 59, 0.3);
+}
+
+/* Inline highlights for contenteditable */
+.lang-helper-inline {
+  display: inline;
+  padding: 0;
+  margin: 0;
+}
+
+/* Tooltip styles */
+.lang-helper-suggestion-tooltip {
+  position: absolute;
+  z-index: 10000;
+  background: #ffffff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 0;
+  max-width: 320px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.lang-helper-tooltip-content {
+  padding: 12px;
+}
+
+.lang-helper-tooltip-header {
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #eee;
+  color: #333;
+}
+
+.lang-helper-tooltip-message {
+  color: #333;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.lang-helper-tooltip-suggestion {
+  background-color: #e8f5e9;
+  padding: 8px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  color: #2e7d32;
+  border-left: 3px solid #4caf50;
+}
+
+.lang-helper-tooltip-suggestion strong {
+  font-weight: 600;
+  display: block;
+  margin-bottom: 4px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.lang-helper-tooltip-explanation {
+  color: #666;
+  font-size: 12px;
+  line-height: 1.6;
+  padding-top: 8px;
+  border-top: 1px solid #eee;
+}
+
+/* Ensure tooltip is above all content */
+.lang-helper-suggestion-tooltip::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: 20px;
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-bottom: 8px solid #ddd;
+}
+
+.lang-helper-suggestion-tooltip::after {
+  content: '';
+  position: absolute;
+  top: -7px;
+  left: 21px;
+  width: 0;
+  height: 0;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-bottom: 7px solid #ffffff;
+}
+
+/* Animation for tooltip appearance */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.lang-helper-suggestion-tooltip {
+  animation: fadeIn 0.2s ease-out;
+}
+
+/* Ensure highlights work well with textareas */
+textarea.lang-helper-monitored,
+input.lang-helper-monitored {
+  position: relative;
+  z-index: 2;
+  background: transparent;
+}
+
+/* Marks for positioned overlay */
+.lang-helper-mark {
+  background: transparent !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.lang-helper-mark[data-severity="error"] {
+  text-decoration: underline solid #dc3545 !important;
+  text-decoration-thickness: 2px !important;
+}
+
+.lang-helper-mark[data-severity="warning"] {
+  text-decoration: underline solid #ffc107 !important;
+  text-decoration-thickness: 2px !important;
+}
+
+.lang-helper-mark[data-severity="info"] {
+  text-decoration: underline solid #17a2b8 !important;
+  text-decoration-thickness: 2px !important;
+}
+
+.lang-helper-mark[data-severity="style"] {
+  text-decoration: underline solid #9e9e9e !important;
+  text-decoration-thickness: 1px !important;
+}
+
+.lang-helper-mark:hover {
+  background-color: rgba(255, 235, 59, 0.3) !important;
+}
