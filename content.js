@@ -11,6 +11,7 @@ let activeElement = null;
 let suggestionOverlay = null;
 let currentAnalysis = null; // Track ongoing analysis
 let elementSuggestions = new WeakMap(); // Store all suggestions per element
+let activeOverlays = new Map(); // Track element -> overlay mapping for cleanup
 
 // Load settings from storage
 chrome.storage.sync.get(['targetLanguage', 'apiKey', 'enabled'], (result) => {
@@ -48,13 +49,13 @@ function setupTextMonitoring(element) {
   element.addEventListener('focus', handleFocus);
   element.addEventListener('blur', handleBlur);
 
-  // Analyze existing text immediately if present
-  const text = getTextWithLineBreaks(element);
-  if (text && text.trim().length >= 10 && currentSettings.enabled && currentSettings.apiKey) {
-    setTimeout(() => {
+  // Analyze existing text after a delay to ensure settings are loaded
+  setTimeout(() => {
+    const text = getTextWithLineBreaks(element);
+    if (text && text.trim().length >= 10 && currentSettings.enabled && currentSettings.apiKey) {
       analyzeText(text, element);
-    }, 500); // Small delay to avoid analyzing too many fields at once
-  }
+    }
+  }, 1000); // Delay to ensure settings are loaded
 }
 
 function handleFocus(event) {
@@ -477,6 +478,8 @@ function createPositionedOverlay(suggestions, element, text) {
     existingOverlay.remove();
   }
 
+  // We'll filter suggestions after rendering by checking actual mark positions
+
   // Create overlay container that sits on top of the element
   const overlay = document.createElement('div');
   overlay.id = 'lang-helper-content-overlay';
@@ -505,7 +508,7 @@ function createPositionedOverlay(suggestions, element, text) {
   overlay.style.wordWrap = computedStyle.wordWrap;
   overlay.style.overflowWrap = computedStyle.overflowWrap;
   overlay.style.pointerEvents = 'none';
-  overlay.style.zIndex = '9999';
+  overlay.style.zIndex = '1000'; // High enough to be clickable, we'll handle toolbar with clipping
   overlay.style.color = 'transparent'; // Make text invisible
   overlay.style.overflow = 'hidden';
   overlay.style.boxSizing = computedStyle.boxSizing;
@@ -545,7 +548,8 @@ function createPositionedOverlay(suggestions, element, text) {
   document.body.appendChild(overlay);
 
   // Add hover listeners to marks
-  overlay.querySelectorAll('.lang-helper-mark').forEach(mark => {
+  const marks = overlay.querySelectorAll('.lang-helper-mark');
+  marks.forEach((mark) => {
     mark.addEventListener('mouseenter', (e) => {
       const suggestionData = e.target.getAttribute('data-suggestion');
       const suggestion = JSON.parse(suggestionData);
@@ -556,13 +560,136 @@ function createPositionedOverlay(suggestions, element, text) {
     mark.addEventListener('mouseleave', hideTooltip);
   });
 
+  // Function to hide marks that overlap with toolbars
+  const hideOverlappingMarks = () => {
+    const allToolbars = document.querySelectorAll('[role="toolbar"]');
+    const elementRect = element.getBoundingClientRect();
+
+    // Filter to only toolbars that overlap with the element area
+    const relevantToolbars = Array.from(allToolbars).filter(toolbar => {
+      const toolbarRect = toolbar.getBoundingClientRect();
+      const overlapsH = toolbarRect.left < elementRect.right && toolbarRect.right > elementRect.left;
+      const overlapsV = toolbarRect.top < elementRect.bottom && toolbarRect.bottom > elementRect.top;
+      return overlapsH && overlapsV && toolbarRect.height > 0;
+    });
+
+    marks.forEach((mark) => {
+      const markRect = mark.getBoundingClientRect();
+      let shouldHide = false;
+
+      relevantToolbars.forEach(toolbar => {
+        const toolbarRect = toolbar.getBoundingClientRect();
+
+        // Check for overlap
+        const overlapsHorizontally = markRect.left < toolbarRect.right && markRect.right > toolbarRect.left;
+        const overlapsVertically = markRect.top < toolbarRect.bottom && markRect.bottom > toolbarRect.top;
+
+        if (overlapsHorizontally && overlapsVertically) {
+          shouldHide = true;
+        }
+      });
+
+      if (shouldHide) {
+        mark.style.visibility = 'hidden';
+      } else {
+        mark.style.visibility = 'visible';
+      }
+    });
+  };
+
+  // Check immediately
+  hideOverlappingMarks();
+
+  // Define cleanup function first so it can be used in updatePosition
+  const cleanup = () => {
+    if (overlay && overlay.parentNode) {
+      overlay.remove();
+    }
+    if (scrollListener) {
+      window.removeEventListener('scroll', scrollListener, true);
+    }
+    if (resizeListener) {
+      window.removeEventListener('resize', resizeListener);
+    }
+  };
+
   // Update overlay position when scrolling or resizing
   const updatePosition = () => {
+    // Check if element is still in the document
+    if (!document.body.contains(element)) {
+      cleanup();
+      return;
+    }
+
     const newRect = element.getBoundingClientRect();
 
-    // Check if element is still visible on screen
-    if (newRect.top < -100 || newRect.bottom > window.innerHeight + 100) {
-      // Element scrolled off screen, hide overlay
+    // Find all potential clipping containers
+    let clippingContainers = [];
+    let current = element.parentElement;
+
+    while (current && current !== document.documentElement) {
+      const style = window.getComputedStyle(current);
+      const hasOverflow = style.overflow !== 'visible' || style.overflowY !== 'visible' || style.overflowX !== 'visible';
+
+      if (hasOverflow) {
+        clippingContainers.push(current);
+      }
+
+      current = current.parentElement;
+    }
+
+    // Calculate clipping based on all containers
+    let clipTop = 0;
+    let clipBottom = 0;
+    let clipLeft = 0;
+    let clipRight = 0;
+
+    // Find the most restrictive bounds from all containers
+    let minTop = -Infinity;
+    let maxBottom = Infinity;
+    let minLeft = -Infinity;
+    let maxRight = Infinity;
+
+    clippingContainers.forEach(container => {
+      const containerRect = container.getBoundingClientRect();
+
+      // Track the most restrictive boundaries
+      if (containerRect.top > minTop) minTop = containerRect.top;
+      if (containerRect.bottom < maxBottom) maxBottom = containerRect.bottom;
+      if (containerRect.left > minLeft) minLeft = containerRect.left;
+      if (containerRect.right < maxRight) maxRight = containerRect.right;
+    });
+
+    // Calculate clipping based on the most restrictive bounds
+    if (minTop > newRect.top) clipTop = minTop - newRect.top;
+    if (maxBottom < newRect.bottom) clipBottom = newRect.bottom - maxBottom;
+    if (minLeft > newRect.left) clipLeft = minLeft - newRect.left;
+    if (maxRight < newRect.right) clipRight = newRect.right - maxRight;
+
+    // Also clip to viewport
+    const viewportTop = -newRect.top;
+    const viewportBottom = newRect.bottom - window.innerHeight;
+    const viewportLeft = -newRect.left;
+    const viewportRight = newRect.right - window.innerWidth;
+
+    if (viewportTop > clipTop) clipTop = viewportTop;
+    if (viewportBottom > clipBottom) clipBottom = viewportBottom;
+    if (viewportLeft > clipLeft) clipLeft = viewportLeft;
+    if (viewportRight > clipRight) clipRight = viewportRight;
+
+    // Ensure clipping values are non-negative
+    clipTop = Math.max(0, clipTop);
+    clipBottom = Math.max(0, clipBottom);
+    clipLeft = Math.max(0, clipLeft);
+    clipRight = Math.max(0, clipRight);
+
+    // Hide if completely out of view
+    const isOutOfView = clipTop >= newRect.height ||
+                        clipBottom >= newRect.height ||
+                        clipLeft >= newRect.width ||
+                        clipRight >= newRect.width;
+
+    if (isOutOfView) {
       overlay.style.display = 'none';
     } else {
       overlay.style.display = 'block';
@@ -570,6 +697,18 @@ function createPositionedOverlay(suggestions, element, text) {
       overlay.style.top = newRect.top + window.scrollY + 'px';
       overlay.style.width = newRect.width + 'px';
       overlay.style.height = newRect.height + 'px';
+
+      // Use clip-path to hide content outside visible bounds
+      if (clipTop > 0 || clipBottom > 0 || clipLeft > 0 || clipRight > 0) {
+        overlay.style.clipPath = `inset(${clipTop}px ${clipRight}px ${clipBottom}px ${clipLeft}px)`;
+        overlay.style.overflow = 'hidden';
+      } else {
+        overlay.style.clipPath = 'none';
+        overlay.style.overflow = 'hidden';
+      }
+
+      // Recheck which marks should be hidden due to toolbar overlap
+      hideOverlappingMarks();
     }
   };
 
@@ -579,21 +718,19 @@ function createPositionedOverlay(suggestions, element, text) {
   window.addEventListener('scroll', scrollListener, true);
   window.addEventListener('resize', resizeListener);
 
-  // Clean up when typing starts again (not on blur, that's too aggressive)
-  const cleanup = () => {
-    if (overlay && overlay.parentNode) {
-      overlay.remove();
-    }
-    window.removeEventListener('scroll', scrollListener, true);
-    window.removeEventListener('resize', resizeListener);
-  };
+  // Trigger initial position update
+  updatePosition();
 
-  // Only clean up when user starts typing again, not on blur
+  // Also clean up when user starts typing again
   element.addEventListener('input', cleanup, { once: true });
 
-  // Store cleanup function
+  // Store cleanup function and overlay reference
   element.setAttribute('data-overlay-id', 'lang-helper-content-overlay');
   element._overlayCleanup = cleanup;
+  element._overlayElement = overlay;
+
+  // Also store in global map for cleanup detection
+  activeOverlays.set(element, { overlay, cleanup });
 }
 
 function getSeverityLabel(severity) {
@@ -722,12 +859,38 @@ function monitorPage() {
 // Initial setup
 monitorPage();
 
-// Watch for dynamically added elements
+// Function to check for stale overlays
+const cleanupStaleOverlays = () => {
+  if (activeOverlays.size > 0) {
+    activeOverlays.forEach((data, element) => {
+      // Check if element is actually visible (has dimensions and is in a visible container)
+      const rect = element.getBoundingClientRect();
+      const isVisible = rect.width > 0 && rect.height > 0;
+      const inDOM = document.body.contains(element);
+      const isConnected = element.isConnected;
+
+      // If element has no size or is not visible, it's probably hidden/removed
+      if (!inDOM || !isConnected || !isVisible) {
+        data.cleanup();
+        activeOverlays.delete(element);
+      }
+    });
+  }
+};
+
+// Watch for dynamically added and removed elements
 const observer = new MutationObserver((mutations) => {
+  // Check for new elements
   monitorPage();
+
+  // Check for stale overlays
+  cleanupStaleOverlays();
 });
 
 observer.observe(document.body, {
   childList: true,
   subtree: true
 });
+
+// Also check periodically in case MutationObserver misses something
+setInterval(cleanupStaleOverlays, 2000);
