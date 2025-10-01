@@ -112,8 +112,6 @@ async function analyzeText(text, element) {
     });
 
     if (response && response.suggestions) {
-      console.log('[Lang Helper] Received suggestions:', response.suggestions);
-
       // Store suggestions for this element
       elementSuggestions.set(element, {
         text: text,
@@ -122,11 +120,9 @@ async function analyzeText(text, element) {
       });
 
       displaySuggestions(response.suggestions, element);
-    } else if (response && response.error) {
-      console.error('[Lang Helper] Analysis error:', response.error);
     }
   } catch (error) {
-    console.error('[Lang Helper] Analysis failed:', error);
+    // Silently fail - analysis errors are not critical
   } finally {
     currentAnalysis = null;
   }
@@ -245,230 +241,6 @@ function hideTooltip() {
   }
 }
 
-function showSuggestionsPanel(suggestions, element) {
-  console.log('[Lang Helper] Showing suggestions panel with', suggestions.length, 'items');
-
-  // Remove any existing panel
-  const existingPanel = document.getElementById('lang-helper-suggestions-panel');
-  if (existingPanel) {
-    existingPanel.remove();
-  }
-
-  // Create panel
-  const panel = document.createElement('div');
-  panel.id = 'lang-helper-suggestions-panel';
-  panel.style.cssText = `
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    max-width: 400px;
-    max-height: 500px;
-    overflow-y: auto;
-    background: white;
-    border: 2px solid #4285f4;
-    border-radius: 12px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.2);
-    z-index: 999999;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    font-size: 14px;
-  `;
-
-  // Header
-  const header = document.createElement('div');
-  header.style.cssText = `
-    background: linear-gradient(135deg, #4285f4, #34a853);
-    color: white;
-    padding: 12px 16px;
-    font-weight: 600;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-radius: 10px 10px 0 0;
-  `;
-  header.innerHTML = `
-    <span>✨ ${suggestions.length} Suggestion${suggestions.length !== 1 ? 's' : ''}</span>
-    <button id="lang-helper-close-panel" style="background: none; border: none; color: white; cursor: pointer; font-size: 20px; padding: 0; width: 24px; height: 24px;">×</button>
-  `;
-
-  panel.appendChild(header);
-
-  // Content
-  const content = document.createElement('div');
-  content.style.cssText = `padding: 16px;`;
-
-  suggestions.forEach((suggestion, index) => {
-    const item = document.createElement('div');
-    item.style.cssText = `
-      margin-bottom: 16px;
-      padding: 12px;
-      background: #f8f9fa;
-      border-radius: 8px;
-      border-left: 4px solid ${getSeverityColor(suggestion.severity)};
-    `;
-
-    const text = element.value || element.textContent || element.innerText || '';
-    const problematicText = text.substring(suggestion.start, suggestion.end);
-
-    item.innerHTML = `
-      <div style="display: flex; align-items: center; margin-bottom: 8px;">
-        <span style="font-size: 12px; font-weight: 600; text-transform: uppercase; color: #666;">${getSeverityLabel(suggestion.severity)}</span>
-      </div>
-      <div style="margin-bottom: 8px;">
-        <span style="background: #ffebee; padding: 2px 6px; border-radius: 4px; text-decoration: line-through; color: #c62828;">${escapeHtml(problematicText)}</span>
-        ${suggestion.correction ? `<span style="margin: 0 8px;">→</span><span style="background: #e8f5e9; padding: 2px 6px; border-radius: 4px; color: #2e7d32; font-weight: 500;">${escapeHtml(suggestion.correction)}</span>` : ''}
-      </div>
-      <div style="color: #555; font-size: 13px; margin-bottom: 4px;">${escapeHtml(suggestion.message)}</div>
-      ${suggestion.explanation ? `<div style="color: #777; font-size: 12px; margin-top: 8px; padding-top: 8px; border-top: 1px solid #ddd;">${escapeHtml(suggestion.explanation)}</div>` : ''}
-    `;
-
-    content.appendChild(item);
-  });
-
-  panel.appendChild(content);
-  document.body.appendChild(panel);
-
-  // Close button handler
-  document.getElementById('lang-helper-close-panel').addEventListener('click', () => {
-    panel.remove();
-  });
-
-  // Auto-close after 30 seconds
-  setTimeout(() => {
-    if (panel.parentNode) {
-      panel.remove();
-    }
-  }, 30000);
-}
-
-function getSeverityColor(severity) {
-  const colors = {
-    error: '#dc3545',
-    warning: '#ffc107',
-    info: '#17a2b8',
-    style: '#6c757d'
-  };
-  return colors[severity] || '#17a2b8';
-}
-
-function createSuggestionsSidebar(suggestions, element, text) {
-  console.log('[Lang Helper] Creating suggestions sidebar');
-
-  // Remove existing sidebar
-  const existingSidebar = document.getElementById('lang-helper-sidebar');
-  if (existingSidebar) {
-    existingSidebar.remove();
-  }
-
-  // Create compact sidebar
-  const sidebar = document.createElement('div');
-  sidebar.id = 'lang-helper-sidebar';
-  sidebar.style.cssText = `
-    position: fixed;
-    right: 20px;
-    top: 50%;
-    transform: translateY(-50%);
-    max-width: 350px;
-    max-height: 80vh;
-    overflow-y: auto;
-    background: white;
-    border: 2px solid #4285f4;
-    border-radius: 12px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.2);
-    z-index: 999999;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    font-size: 13px;
-  `;
-
-  // Header
-  const header = document.createElement('div');
-  header.style.cssText = `
-    background: linear-gradient(135deg, #4285f4, #34a853);
-    color: white;
-    padding: 10px 12px;
-    font-weight: 600;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-radius: 10px 10px 0 0;
-    font-size: 14px;
-  `;
-  header.innerHTML = `
-    <span>✨ ${suggestions.length} Issue${suggestions.length !== 1 ? 's' : ''}</span>
-    <button id="lang-helper-close-sidebar" style="background: none; border: none; color: white; cursor: pointer; font-size: 18px; padding: 0; width: 20px; height: 20px; line-height: 20px;">×</button>
-  `;
-
-  sidebar.appendChild(header);
-
-  // Content
-  const content = document.createElement('div');
-  content.style.cssText = `padding: 12px;`;
-
-  suggestions.forEach((suggestion, index) => {
-    const item = document.createElement('div');
-    item.style.cssText = `
-      margin-bottom: 12px;
-      padding: 10px;
-      background: #f8f9fa;
-      border-radius: 6px;
-      border-left: 3px solid ${getSeverityColor(suggestion.severity)};
-      cursor: pointer;
-      transition: background 0.2s;
-    `;
-
-    item.addEventListener('mouseenter', () => {
-      item.style.background = '#e9ecef';
-    });
-
-    item.addEventListener('mouseleave', () => {
-      item.style.background = '#f8f9fa';
-    });
-
-    const problematicText = text.substring(suggestion.start, suggestion.end);
-
-    item.innerHTML = `
-      <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: #666; margin-bottom: 6px;">
-        ${getSeverityIcon(suggestion.severity)} ${suggestion.severity}
-      </div>
-      <div style="margin-bottom: 6px;">
-        <span style="background: #ffebee; padding: 2px 5px; border-radius: 3px; text-decoration: line-through; color: #c62828; font-size: 12px;">${escapeHtml(problematicText)}</span>
-        ${suggestion.correction ? `<span style="margin: 0 6px; color: #666;">→</span><span style="background: #e8f5e9; padding: 2px 5px; border-radius: 3px; color: #2e7d32; font-weight: 600; font-size: 12px;">${escapeHtml(suggestion.correction)}</span>` : ''}
-      </div>
-      <div style="color: #555; font-size: 12px; line-height: 1.4;">${escapeHtml(suggestion.message)}</div>
-      ${suggestion.explanation ? `<div style="color: #777; font-size: 11px; margin-top: 6px; padding-top: 6px; border-top: 1px solid #ddd; line-height: 1.4;">${escapeHtml(suggestion.explanation)}</div>` : ''}
-    `;
-
-    content.appendChild(item);
-  });
-
-  sidebar.appendChild(content);
-  document.body.appendChild(sidebar);
-
-  // Close button handler
-  document.getElementById('lang-helper-close-sidebar').addEventListener('click', () => {
-    sidebar.remove();
-  });
-
-  // Auto-close when clicking outside
-  const closeOnClickOutside = (e) => {
-    if (!sidebar.contains(e.target)) {
-      sidebar.remove();
-      document.removeEventListener('click', closeOnClickOutside);
-    }
-  };
-  setTimeout(() => {
-    document.addEventListener('click', closeOnClickOutside);
-  }, 100);
-}
-
-function getSeverityIcon(severity) {
-  const icons = {
-    error: '❌',
-    warning: '⚠️',
-    info: 'ℹ️',
-    style: '✨'
-  };
-  return icons[severity] || 'ℹ️';
-}
 
 function createPositionedOverlay(suggestions, element, text) {
 
@@ -852,7 +624,6 @@ function escapeHtmlWithBreaks(text) {
 function monitorPage() {
   // Include Gmail compose fields and other contenteditable divs
   const textElements = document.querySelectorAll('textarea, input[type="text"], [contenteditable="true"], [role="textbox"]');
-  console.log('[Lang Helper] Found', textElements.length, 'text elements to monitor');
   textElements.forEach(setupTextMonitoring);
 }
 
