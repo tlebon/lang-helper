@@ -220,7 +220,22 @@ function showTooltip(suggestion, targetElement) {
     <div class="lang-helper-tooltip-content">
       <div class="lang-helper-tooltip-header">${getSeverityLabel(suggestion.severity)}</div>
       <div class="lang-helper-tooltip-message">${escapeHtml(suggestion.message)}</div>
-      ${suggestion.correction ? `<div class="lang-helper-tooltip-suggestion"><strong>Suggestion:</strong> <span style="color: #2e7d32; font-weight: 600;">${escapeHtml(suggestion.correction)}</span></div>` : ''}
+      ${suggestion.correction ? `
+        <div class="lang-helper-tooltip-suggestion">
+          <strong>Suggestion:</strong> <span style="color: #2e7d32; font-weight: 600;">${escapeHtml(suggestion.correction)}</span>
+        </div>
+        <button class="lang-helper-replace-btn" data-suggestion='${JSON.stringify(suggestion).replace(/'/g, "&apos;")}' style="
+          margin-top: 8px;
+          padding: 6px 12px;
+          background: #2e7d32;
+          color: white;
+          border: none;
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 13px;
+          font-weight: 500;
+        ">Replace</button>
+      ` : ''}
       ${suggestion.explanation ? `<div class="lang-helper-tooltip-explanation">${escapeHtml(suggestion.explanation)}</div>` : ''}
     </div>
   `;
@@ -233,11 +248,86 @@ function showTooltip(suggestion, targetElement) {
 
   suggestionOverlay.style.left = left + 'px';
   suggestionOverlay.style.top = top + 'px';
+
+  // Add click handler for replace button
+  const replaceBtn = suggestionOverlay.querySelector('.lang-helper-replace-btn');
+  if (replaceBtn) {
+    replaceBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const suggestionData = JSON.parse(replaceBtn.getAttribute('data-suggestion'));
+      applySuggestion(suggestionData, targetElement);
+      hideTooltip();
+    });
+  }
 }
 
 function hideTooltip() {
   if (suggestionOverlay) {
     suggestionOverlay.style.display = 'none';
+  }
+}
+
+function applySuggestion(suggestion, markElement) {
+  // Find the element being monitored (traverse up from the mark to find the overlay, then get the original element)
+  const overlay = markElement.closest('#lang-helper-content-overlay');
+  if (!overlay) return;
+
+  // Find the original element from our activeOverlays map
+  let targetElement = null;
+  activeOverlays.forEach((data, element) => {
+    if (data.overlay === overlay) {
+      targetElement = element;
+    }
+  });
+
+  if (!targetElement) return;
+
+  // Get current text
+  const currentText = getTextWithLineBreaks(targetElement);
+
+  // Replace the text at the specified position
+  const newText = currentText.substring(0, suggestion.start) +
+                  suggestion.correction +
+                  currentText.substring(suggestion.end);
+
+  // Apply the new text
+  if (targetElement.value !== undefined) {
+    // For textarea/input
+    targetElement.value = newText;
+  } else if (targetElement.isContentEditable) {
+    // For contenteditable, we need to preserve the cursor position and update carefully
+    targetElement.innerText = newText;
+  }
+
+  // Update stored suggestions - remove the fixed one and adjust positions of others
+  const storedData = elementSuggestions.get(targetElement);
+  if (storedData) {
+    const lengthDiff = suggestion.correction.length - (suggestion.end - suggestion.start);
+
+    // Filter out the fixed suggestion and adjust positions of suggestions that come after it
+    const updatedSuggestions = storedData.suggestions
+      .filter(s => s.start !== suggestion.start || s.end !== suggestion.end)
+      .map(s => {
+        if (s.start >= suggestion.end) {
+          // Adjust positions for suggestions after the fixed one
+          return {
+            ...s,
+            start: s.start + lengthDiff,
+            end: s.end + lengthDiff
+          };
+        }
+        return s;
+      });
+
+    // Update stored suggestions
+    elementSuggestions.set(targetElement, {
+      text: newText,
+      suggestions: updatedSuggestions,
+      timestamp: Date.now()
+    });
+
+    // Re-display suggestions without triggering new analysis
+    displaySuggestions(updatedSuggestions, targetElement);
   }
 }
 
@@ -321,16 +411,45 @@ function createPositionedOverlay(suggestions, element, text) {
 
   // Add hover listeners to marks
   const marks = overlay.querySelectorAll('.lang-helper-mark');
+  let hideTooltipTimeout = null;
+
   marks.forEach((mark) => {
     mark.addEventListener('mouseenter', (e) => {
+      // Clear any pending hide timeout
+      if (hideTooltipTimeout) {
+        clearTimeout(hideTooltipTimeout);
+        hideTooltipTimeout = null;
+      }
+
       const suggestionData = e.target.getAttribute('data-suggestion');
       const suggestion = JSON.parse(suggestionData);
       if (suggestion) {
         showTooltip(suggestion, e.target);
       }
     });
-    mark.addEventListener('mouseleave', hideTooltip);
+
+    mark.addEventListener('mouseleave', () => {
+      // Delay hiding to allow moving to the tooltip
+      hideTooltipTimeout = setTimeout(() => {
+        hideTooltip();
+      }, 200);
+    });
   });
+
+  // Also add hover listeners to the tooltip itself
+  if (suggestionOverlay) {
+    suggestionOverlay.addEventListener('mouseenter', () => {
+      // Cancel hide when hovering over tooltip
+      if (hideTooltipTimeout) {
+        clearTimeout(hideTooltipTimeout);
+        hideTooltipTimeout = null;
+      }
+    });
+
+    suggestionOverlay.addEventListener('mouseleave', () => {
+      hideTooltip();
+    });
+  }
 
   // Function to hide marks that overlap with toolbars
   const hideOverlappingMarks = () => {
