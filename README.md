@@ -8,11 +8,27 @@ A Chrome extension that helps you improve your writing in a foreign language by 
 - 🌍 **20+ Languages**: Support for Spanish, French, German, Japanese, and many more
 - 💡 **Smart Suggestions**: Grammar corrections, style improvements, and tone analysis
 - 🎨 **Visual Feedback**: Color-coded underlines for different types of issues:
-  - Red wavy: Grammar/spelling errors
-  - Yellow wavy: Warnings
-  - Blue solid: Suggestions
-  - Gray dotted: Style improvements
+  - Red solid: Grammar/spelling errors
+  - Blue solid: Style improvements
 - 💬 **Detailed Tooltips**: Hover over underlined text to see explanations and corrections
+- ✨ **One-Click Corrections**: Click "Replace" in the tooltip to instantly apply suggestions
+
+## Screenshots
+
+<table>
+  <tr>
+    <td width="50%">
+      <h3>Style Suggestion</h3>
+      <img src="screenshots/style-suggestion.png" alt="Style suggestion tooltip" width="100%">
+    </td>
+    <td width="50%">
+      <h3>Grammar Correction</h3>
+      <img src="screenshots/grammar-correction.png" alt="Grammar error tooltip" width="100%">
+    </td>
+  </tr>
+</table>
+
+The extension provides inline feedback with detailed explanations and one-click corrections.
 
 ## Installation
 
@@ -48,22 +64,36 @@ For a complete experience, add icon images:
 
 1. Navigate to any website with text input fields (Gmail, Twitter, Google Docs, etc.)
 2. Start typing in your target language
-3. The extension will analyze your text after you pause typing (1.5 seconds)
-4. Hover over underlined text to see suggestions and corrections
+3. The extension will automatically analyze your text when you focus on a text field or after you pause typing (1.5 seconds)
+4. Hover over underlined text to see suggestions, explanations, and corrections
+5. Click the "Replace" button in the tooltip to instantly apply the suggested correction
 
 ### Supported Text Fields
 
 - Text inputs (`<input type="text">`)
 - Textareas (`<textarea>`)
-- Content-editable divs (like those in rich text editors)
+- Content-editable divs (like those in Gmail compose windows and rich text editors)
+
+### Features in Action
+
+- **Automatic Analysis**: Text is analyzed when you click into a field or 1.5 seconds after you stop typing
+- **Smart Clipping**: Underlines are hidden when scrolled out of view or obscured by toolbars
+- **Intelligent Positioning**: Tooltips automatically position themselves to stay visible
+- **Progressive Corrections**: Apply corrections one at a time while keeping other suggestions visible
+- **Automatic Cleanup**: Overlays are removed when you close or minimize windows
 
 ## How It Works
 
-1. **Content Script** (`content.js`): Monitors all text input fields on web pages
-2. **Background Worker** (`background.js`): Sends text to Claude API for analysis
-3. **Analysis**: Claude evaluates grammar, spelling, tone, and style
-4. **Display**: Issues are highlighted with color-coded underlines
-5. **Tooltips**: Hovering shows detailed explanations and corrections
+1. **Content Script** (`content.js`): Monitors all text input fields on web pages using MutationObserver
+2. **Background Worker** (`background.js`): Sends text to Claude API for analysis with position verification
+3. **Analysis**: Claude evaluates grammar, spelling, tone, and style with character-precise positioning
+4. **Overlay System**: Creates positioned overlays with underlines that match the text exactly
+5. **Smart Rendering**:
+   - Hides marks that overlap with toolbars (e.g., Gmail compose toolbar)
+   - Clips underlines when content scrolls out of view
+   - Automatically removes overlays when elements are removed from DOM
+6. **Interactive Tooltips**: Hover to see explanations and click "Replace" to apply corrections
+7. **Position Adjustment**: After corrections, remaining suggestions are repositioned automatically
 
 ## Privacy
 
